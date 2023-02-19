@@ -1,23 +1,32 @@
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
+	const SampleToken = await ethers.getContractFactory("SampleToken");
+	console.log("Deploying SampleToken...");
+	const tokenContract = await upgrades.deployProxy(SampleToken, {
+		initializer: "initialize",
+	});
 
-  const lockedAmount = ethers.utils.parseEther("1");
+	await tokenContract.deployed();
+	console.log("SampleToken Contract deployed to:", tokenContract.address);
 
-  const Lock = await ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+	const Crowdfund = await ethers.getContractFactory("Crowdfund");
+	const crowdfundTarget = "2000000000000000000"; // 2 * 10 ** 18
 
-  await lock.deployed();
+	console.log("Deploying Crowdfund...");
+	const crowdfundContract = await upgrades.deployProxy(
+		Crowdfund,
+		[tokenContract.address, crowdfundTarget],
+		{
+			initializer: "initialize",
+		},
+	);
 
-  console.log(`Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`);
+	await crowdfundContract.deployed();
+	console.log("Crowdfund Contract deployed to:", crowdfundContract.address);
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+	console.error(error);
+	process.exitCode = 1;
 });
